@@ -23,7 +23,8 @@ BitCrusherAudioProcessor::BitCrusherAudioProcessor()
 #endif
 {
     bitDepth = dynamic_cast<juce::AudioParameterInt*>(apvts.getParameter("bitDepth"));
-    bitRate = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter("bitRate"));
+    bitRate = dynamic_cast<juce::AudioParameterInt*>(apvts.getParameter("bitRate"));
+    mix = dynamic_cast<juce::AudioParameterFloat*> (apvts.getParameter("mix"));
 }
 
 BitCrusherAudioProcessor::~BitCrusherAudioProcessor()
@@ -142,15 +143,27 @@ void BitCrusherAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
 
     for (int channel = 0; channel < totalNumInputChannels; ++channel)
     {
+        float* data = buffer.getWritePointer(channel);
+
         for (int s = 0; s < buffer.getNumSamples(); ++s)
         {
-            auto rawData = buffer.getSample(channel, s);
+            auto rawData = data[s];
             auto crusher = pow(2, bitDepth->get());
-            auto crushedData = floor(crusher * rawData) / rawData;
-            buffer.setSample(channel, s, crushedData);
-        }         
+            auto crushedData = floor(crusher * rawData) / crusher;
+            data[s] = (crushedData * mix->get()) + (rawData * (1-mix->get()));
 
+            if (bitRate->get() >= 1)
+            {
+                if (s % bitRate->get() != 0)
+                {
+                    auto redux = data[s - s % bitRate->get()];
+                    data[s] = (redux * mix->get()) + (rawData * (1 - mix->get()));
+                }
+            }
+                
+        }
     }
+
 }
 
 //==============================================================================
@@ -168,15 +181,16 @@ juce::AudioProcessorEditor* BitCrusherAudioProcessor::createEditor()
 //==============================================================================
 void BitCrusherAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
-    // You should use this method to store your parameters in the memory block.
-    // You could do that either as raw data, or use the XML or ValueTree classes
-    // as intermediaries to make it easy to save and load complex data.
+    juce::MemoryOutputStream mos(destData, true);
+    apvts.state.writeToStream(mos);
 }
 
 void BitCrusherAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
-    // You should use this method to restore your parameters from this memory block,
-    // whose contents will have been created by the getStateInformation() call.
+    auto tree = juce::ValueTree::readFromData(data, sizeInBytes);
+    if (tree.isValid()) {
+        apvts.replaceState(tree);
+    }
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout BitCrusherAudioProcessor::createParameterLayout()
@@ -184,11 +198,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout BitCrusherAudioProcessor::cr
     using namespace juce;
     AudioProcessorValueTreeState::ParameterLayout layout;
 
-    auto depthRange = NormalisableRange<int>(1, 16);
-    auto rateRange = NormalisableRange<float>(0, 100, .01, 1);
+    auto mixRange = NormalisableRange<float>(0, 1, .01);
 
     layout.add(std::make_unique<AudioParameterInt>("bitDepth", "bitDepth", 1, 16, 16));
-    layout.add(std::make_unique<AudioParameterFloat>("bitRate", "Bit Rate", rateRange, 0));
+    layout.add(std::make_unique<AudioParameterInt>("bitRate", "Bit Rate", 0, 50, 0));
+    layout.add(std::make_unique<AudioParameterFloat>("mix", "Dry/Wet", mixRange, 1));
 
     return layout;
 }

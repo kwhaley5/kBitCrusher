@@ -62,7 +62,8 @@ public:
 private:
 
     juce::AudioParameterInt* bitDepth{ nullptr };
-    juce::AudioParameterFloat* bitRate{ nullptr };
+    juce::AudioParameterInt* bitRate{ nullptr };
+    juce::AudioParameterFloat* mix{ nullptr };
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (BitCrusherAudioProcessor)
 };
