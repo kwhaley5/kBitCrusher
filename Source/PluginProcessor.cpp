@@ -191,8 +191,8 @@ bool BitCrusherAudioProcessor::hasEditor() const
 
 juce::AudioProcessorEditor* BitCrusherAudioProcessor::createEditor()
 {
-    //return new BitCrusherAudioProcessorEditor (*this);
-    return new juce::GenericAudioProcessorEditor(*this);
+    return new BitCrusherAudioProcessorEditor (*this);
+    //return new juce::GenericAudioProcessorEditor(*this);
 }
 
 //==============================================================================
