@@ -25,6 +25,7 @@ BitCrusherAudioProcessor::BitCrusherAudioProcessor()
     bitDepth = dynamic_cast<juce::AudioParameterInt*>(apvts.getParameter("bitDepth"));
     bitRate = dynamic_cast<juce::AudioParameterInt*>(apvts.getParameter("bitRate"));
     mix = dynamic_cast<juce::AudioParameterFloat*> (apvts.getParameter("mix"));
+    cutoff = dynamic_cast<juce::AudioParameterFloat*> (apvts.getParameter("cutoff"));
 }
 
 BitCrusherAudioProcessor::~BitCrusherAudioProcessor()
@@ -96,8 +97,16 @@ void BitCrusherAudioProcessor::changeProgramName (int index, const juce::String&
 //==============================================================================
 void BitCrusherAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    // Use this method as the place to do any pre-playback
-    // initialisation that you need..
+    juce::dsp::ProcessSpec spec;
+    spec.maximumBlockSize = samplesPerBlock;
+    spec.numChannels = getTotalNumOutputChannels();
+    spec.sampleRate = sampleRate;
+
+    for (auto& f : filters)
+    {
+        f.reset();
+        f.prepare(spec);
+    }
 }
 
 void BitCrusherAudioProcessor::releaseResources()
@@ -141,27 +150,35 @@ void BitCrusherAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
 
-    for (int channel = 0; channel < totalNumInputChannels; ++channel)
-    {
-        float* data = buffer.getWritePointer(channel);
+    processBuffer.setSize(2, buffer.getNumSamples(), false, false, true);
+    processBuffer.clear();
 
-        for (int s = 0; s < buffer.getNumSamples(); ++s)
+    auto block = juce::dsp::AudioBlock<float>(processBuffer);
+    auto context = juce::dsp::ProcessContextReplacing<float>(block);
+
+    for (int ch = 0; ch < totalNumInputChannels; ++ch)
+    {
+        float* processData = processBuffer.getWritePointer(ch);
+        const float* data = buffer.getReadPointer(ch);
+        updateFilter(ch);
+
+        for (int s = 0; s < processBuffer.getNumSamples(); ++s)
         {
             auto rawData = data[s];
             auto crusher = pow(2, bitDepth->get());
             auto crushedData = floor(crusher * rawData) / crusher;
-            data[s] = (crushedData * mix->get()) + (rawData * (1-mix->get()));
+            processData[s] = (filters[ch].processSample(crushedData) * mix->get());
 
             if (bitRate->get() >= 1)
             {
                 if (s % bitRate->get() != 0)
                 {
-                    auto redux = data[s - s % bitRate->get()];
-                    data[s] = (redux * mix->get()) + (rawData * (1 - mix->get()));
+                    auto redux = processData[s - s % bitRate->get()];
+                    processData[s] = (redux * mix->get());
                 }
             }
-                
         }
+        buffer.addFrom(ch, 0, processBuffer, ch, 0, processBuffer.getNumSamples());
     }
 
 }
@@ -193,16 +210,24 @@ void BitCrusherAudioProcessor::setStateInformation (const void* data, int sizeIn
     }
 }
 
+void BitCrusherAudioProcessor::updateFilter(int channel)
+{
+    auto coeff = juce::dsp::IIR::Coefficients<float>::makeFirstOrderLowPass(getSampleRate(), cutoff->get());
+    filters[channel].coefficients = coeff;
+}
+
 juce::AudioProcessorValueTreeState::ParameterLayout BitCrusherAudioProcessor::createParameterLayout()
 {
     using namespace juce;
     AudioProcessorValueTreeState::ParameterLayout layout;
 
     auto mixRange = NormalisableRange<float>(0, 1, .01);
+    auto cutoffRange = NormalisableRange<float>(100, 20000, 1);
 
     layout.add(std::make_unique<AudioParameterInt>("bitDepth", "bitDepth", 1, 16, 16));
     layout.add(std::make_unique<AudioParameterInt>("bitRate", "Bit Rate", 0, 50, 0));
     layout.add(std::make_unique<AudioParameterFloat>("mix", "Dry/Wet", mixRange, 1));
+    layout.add(std::make_unique<AudioParameterFloat>("cutoff", "Cutoff Frequency", cutoffRange, 20000));
 
     return layout;
 }

@@ -56,14 +56,20 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
+    void updateFilter(int channel);
+
     juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     juce::AudioProcessorValueTreeState apvts{ *this, nullptr, "Parameters", createParameterLayout() };
 
 private:
 
+    std::array<juce::dsp::IIR::Filter<float>, 2> filters;
+    juce::AudioBuffer<float> processBuffer;
+
     juce::AudioParameterInt* bitDepth{ nullptr };
     juce::AudioParameterInt* bitRate{ nullptr };
     juce::AudioParameterFloat* mix{ nullptr };
+    juce::AudioParameterFloat* cutoff{ nullptr };
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (BitCrusherAudioProcessor)
 };
