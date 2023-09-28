@@ -58,6 +58,9 @@ public:
 
     void updateFilter(int channel);
 
+    float getRMS(int channel);
+    float getOutRMS(int channel);
+
     juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     juce::AudioProcessorValueTreeState apvts{ *this, nullptr, "Parameters", createParameterLayout() };
 
@@ -65,6 +68,10 @@ private:
 
     std::array<juce::dsp::IIR::Filter<float>, 2> filters;
     juce::AudioBuffer<float> processBuffer;
+
+
+    std::array<float, 2> rmsIn;
+    std::array<float, 2> rmsOut;
 
     juce::AudioParameterInt* bitDepth{ nullptr };
     juce::AudioParameterInt* bitRate{ nullptr };

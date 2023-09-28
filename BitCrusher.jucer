@@ -1,10 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <JUCERPROJECT id="DgD8nl" name="BitCrusher" projectType="audioplug" useAppConfig="0"
-              addUsingNamespaceToJuceHeader="0" displaySplashScreen="1" jucerFormatVersion="1"
-              companyWebsite="KiTiK Music">
+              addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1" companyName="KiTiK Music">
   <MAINGROUP id="uLcl96" name="BitCrusher">
+    <GROUP id="{9279C552-CF55-9346-9303-4E1E19C0F197}" name="Assets">
+      <FILE id="Js9ul8" name="KITIK_LOGO_NO_BKGD.png" compile="0" resource="1"
+            file="../../../Downloads/KITIK_LOGO_NO_BKGD.png"/>
+      <FILE id="ThpdAU" name="offshore.ttf" compile="0" resource="1" file="../../../Downloads/offshore.ttf"/>
+    </GROUP>
     <GROUP id="{291A36F5-A44E-4630-9C3D-59A11621F5BC}" name="Source">
+      <FILE id="eC7otF" name="KiTiKLNF.cpp" compile="1" resource="0" file="../../../Downloads/KiTiKLNF.cpp"/>
+      <FILE id="WrkbDP" name="KiTiKLNF.h" compile="0" resource="0" file="../../../Downloads/KiTiKLNF.h"/>
       <FILE id="ju1gla" name="PluginProcessor.cpp" compile="1" resource="0"
             file="Source/PluginProcessor.cpp"/>
       <FILE id="tBV8u9" name="PluginProcessor.h" compile="0" resource="0"

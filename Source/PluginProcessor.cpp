@@ -150,6 +150,12 @@ void BitCrusherAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
 
+    //rms levels for meters
+    for (auto channel = 0; channel < totalNumInputChannels; channel++) {
+        rmsIn[channel] = juce::Decibels::gainToDecibels(buffer.getRMSLevel(channel, 0, buffer.getNumSamples()));
+        if (rmsIn[channel] < -60) { rmsIn[channel] = -60; }
+    }
+
     processBuffer.setSize(2, buffer.getNumSamples(), false, false, true);
     processBuffer.clear();
 
@@ -169,7 +175,7 @@ void BitCrusherAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
             auto crushedData = floor(crusher * rawData) / crusher;
             processData[s] = (filters[ch].processSample(crushedData) * mix->get());
 
-            if (bitRate->get() >= 1)
+            if (bitRate->get() > 1)
             {
                 if (s % bitRate->get() != 0)
                 {
@@ -179,6 +185,12 @@ void BitCrusherAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
             }
         }
         buffer.addFrom(ch, 0, processBuffer, ch, 0, processBuffer.getNumSamples());
+    }
+
+    //rms levels for meters
+    for (auto channel = 0; channel < totalNumInputChannels; channel++) {
+        rmsOut[channel] = juce::Decibels::gainToDecibels(buffer.getRMSLevel(channel, 0, buffer.getNumSamples()));
+        if (rmsOut[channel] < -60) { rmsOut[channel] = -60; }
     }
 
 }
@@ -216,16 +228,28 @@ void BitCrusherAudioProcessor::updateFilter(int channel)
     filters[channel].coefficients = coeff;
 }
 
+float BitCrusherAudioProcessor::getRMS(int channel)
+{
+    jassert(channel == 0 || channel == 1);
+    return rmsIn[channel];
+}
+
+float BitCrusherAudioProcessor::getOutRMS(int channel)
+{
+    jassert(channel == 0 || channel == 1);
+    return rmsOut[channel];
+}
+
 juce::AudioProcessorValueTreeState::ParameterLayout BitCrusherAudioProcessor::createParameterLayout()
 {
     using namespace juce;
     AudioProcessorValueTreeState::ParameterLayout layout;
 
     auto mixRange = NormalisableRange<float>(0, 1, .01);
-    auto cutoffRange = NormalisableRange<float>(100, 20000, 1);
+    auto cutoffRange = NormalisableRange<float>(100, 20000, 1, .5);
 
     layout.add(std::make_unique<AudioParameterInt>("bitDepth", "bitDepth", 1, 16, 16));
-    layout.add(std::make_unique<AudioParameterInt>("bitRate", "Bit Rate", 0, 50, 0));
+    layout.add(std::make_unique<AudioParameterInt>("bitRate", "Bit Rate", 1, 25, 1));
     layout.add(std::make_unique<AudioParameterFloat>("mix", "Dry/Wet", mixRange, 1));
     layout.add(std::make_unique<AudioParameterFloat>("cutoff", "Cutoff Frequency", cutoffRange, 20000));
 
